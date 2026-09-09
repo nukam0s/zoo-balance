@@ -1,45 +1,45 @@
 # Zoo Balance
 
-Mostra o teu saldo, usage e cache performance do [Zoo Code](https://zoocode.dev) diretamente na status bar do VSCode.
+Shows your [Zoo Code](https://zoocode.dev) balance, usage analytics, and cache performance directly in the VSCode status bar.
 
 ## Features
 
-- **Balance** — saldo atualizado automaticamente na status bar
-- **Usage** — custo, tokens e requests dos últimos N dias, com breakdown por modo
-- **Cache performance** — read/write tokens e savings estimados
-- **Auto-refresh** — atualiza periodicamente (intervalo configurável)
-- **Session management** — cookies guardados no SecretStorage do VSCode com renovação automática
+- **Balance** — auto-updated balance in the status bar
+- **Usage** — cost, tokens, and requests for the last N days, with per-mode breakdown
+- **Cache performance** — read/write tokens and estimated savings
+- **Auto-refresh** — periodic updates (configurable interval)
+- **Session management** — cookies stored encrypted in VSCode SecretStorage with automatic renewal
 
 ## Setup
 
-1. Instala a extensão no VSCode
-2. Corre o comando **Zoo Balance: Login** (`Ctrl+Shift+P` → "Zoo Balance: Login") — o browser abre em zoocode.dev
-3. Faz login no site
-4. Abre o DevTools do browser (`F12`) → tab **Network** → clica em qualquer pedido a `zoocode.dev` → em **Request Headers**, copia o valor inteiro do header **Cookie**
-5. Cola esse valor na caixa de input que aparece no VSCode
-6. O saldo aparece na status bar — clica para ver o resumo completo
+1. Install the extension in VSCode
+2. Run **Zoo Balance: Login** (`Ctrl+Shift+P` → "Zoo Balance: Login") — the browser opens at zoocode.dev
+3. Log in to the site
+4. Open browser DevTools (`F12`) → **Network** tab → click any request to `zoocode.dev` → in **Request Headers**, copy the full value of the **Cookie** header
+5. Paste that value into the input box that appears in VSCode
+6. The balance appears in the status bar — click it for the full summary
 
-> Os cookies ficam guardados de forma encriptada no SecretStorage do VSCode e são renovados automaticamente.
+> Cookies are stored encrypted in VSCode's SecretStorage and are automatically renewed.
 
-## Comandos
+## Commands
 
-| Comando | Descrição |
-|---------|-----------|
-| `Zoo Balance: Refresh` | Atualiza o saldo manualmente |
-| `Zoo Balance: Show Summary` | Abre o popup com balance + usage + cache |
-| `Zoo Balance: Login` | Abre o browser para login e pede o Cookie header |
-| `Zoo Balance: Logout` | Limpa a sessão guardada |
+| Command | Description |
+|---------|-------------|
+| `Zoo Balance: Refresh` | Manually refresh the balance |
+| `Zoo Balance: Show Summary` | Open the popup with balance + usage + cache |
+| `Zoo Balance: Login` | Open the browser to log in and paste the Cookie header |
+| `Zoo Balance: Logout` | Clear the stored session |
 
-## Configuração
+## Configuration
 
-| Setting | Default | Descrição |
-|---------|---------|-----------|
-| `zooBalance.refreshInterval` | `5` | Intervalo em minutos para atualizar o saldo |
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `zooBalance.refreshInterval` | `5` | Refresh interval in minutes |
 
-## Requisitos
+## Requirements
 
-- Conta em [zoocode.dev](https://zoocode.dev)
-- Login via browser para importar os cookies
+- Account on [zoocode.dev](https://zoocode.dev)
+- Browser login to import cookies
 
 ## License
 
