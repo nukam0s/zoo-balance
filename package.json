@@ -2,7 +2,7 @@
   "name": "zoo-balance",
   "displayName": "Zoo Balance",
   "description": "Shows your Zoo Code (zoocode.dev) balance, usage and cache performance in the VSCode status bar",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "nukam0s",
   "license": "MIT",
   "keywords": ["zoo", "balance", "credits", "usage", "zoocode"],

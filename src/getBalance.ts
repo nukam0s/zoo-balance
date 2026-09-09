@@ -1,5 +1,5 @@
 import * as https from 'https';
-import { CookieStore, Cookie } from './storage';
+import { CookieStore } from './storage';
 
 const CREDITS_URL = 'https://www.zoocode.dev/dashboard/credits';
 
@@ -59,8 +59,7 @@ export interface BalanceInfo {
  * Throws when there is no session or the session is expired.
  */
 export async function getBalanceInfo(store: CookieStore): Promise<BalanceInfo> {
-  const cookies = await store.load();
-  const cookieHeader = store.toHeader(cookies);
+  const cookieHeader = await store.getCookieHeader();
 
   if (!cookieHeader) {
     throw new Error('No session. Run "Zoo Balance: Login" first.');
@@ -88,7 +87,7 @@ export async function getBalanceInfo(store: CookieStore): Promise<BalanceInfo> {
 
     if (res.status === 401 || res.status === 403) {
       // Persist any cookies the server sent before failing (may include a logout)
-      await store.mergeSetCookies(cookies, allSetCookies);
+      await store.mergeSetCookies(cookieHeader, allSetCookies);
       throw new Error('Session expired (HTTP ' + res.status + '). Run "Zoo Balance: Login".');
     }
 
@@ -97,7 +96,7 @@ export async function getBalanceInfo(store: CookieStore): Promise<BalanceInfo> {
   }
 
   // Renew the session: merge any refreshed cookies back into storage
-  const renewed = await store.mergeSetCookies(cookies, allSetCookies);
+  const renewed = await store.mergeSetCookies(cookieHeader, allSetCookies);
   if (renewed) {
     console.log('[zoo-balance] session cookies renewed');
   }

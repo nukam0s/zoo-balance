@@ -94,17 +94,14 @@ export function activate(ctx: vscode.ExtensionContext) {
         placeHolder: 'name1=value1; name2=value2; ...',
       });
 
-      if (!header) {
+      if (!header || !header.includes('=')) {
+        vscode.window.showErrorMessage('Zoo Balance: invalid Cookie header. Make sure you copied the full value.');
         return;
       }
 
-      const imported = await store.importFromCookieHeader(header);
-      if (imported) {
-        vscode.window.showInformationMessage('Zoo Balance: session saved. Fetching balance...');
-        refresh();
-      } else {
-        vscode.window.showErrorMessage('Zoo Balance: could not parse the Cookie header. Make sure you copied the full value.');
-      }
+      await store.saveCookieHeader(header);
+      vscode.window.showInformationMessage('Zoo Balance: session saved. Fetching balance...');
+      refresh();
     }),
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('zooBalance.refreshInterval')) {

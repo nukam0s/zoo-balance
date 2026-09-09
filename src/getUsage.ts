@@ -121,8 +121,7 @@ function parseJsonOrNull<T>(raw: string | null): T | null {
  * Throws when there is no session or the session is expired.
  */
 export async function getUsageInfo(store: CookieStore, period = 7): Promise<UsageInfo> {
-  const cookies = await store.load();
-  const cookieHeader = store.toHeader(cookies);
+  const cookieHeader = await store.getCookieHeader();
 
   if (!cookieHeader) {
     throw new Error('No session. Run "Zoo Balance: Login" first.');
@@ -145,7 +144,7 @@ export async function getUsageInfo(store: CookieStore, period = 7): Promise<Usag
     allSetCookies.push(...res.setCookies);
 
     if (res.status === 401 || res.status === 403) {
-      await store.mergeSetCookies(cookies, allSetCookies);
+      await store.mergeSetCookies(cookieHeader, allSetCookies);
       throw new Error('Session expired (HTTP ' + res.status + '). Run "Zoo Balance: Login".');
     }
     if (res.status !== 200) {
@@ -163,7 +162,7 @@ export async function getUsageInfo(store: CookieStore, period = 7): Promise<Usag
   ]);
 
   // Renew the session: merge any refreshed cookies back into storage
-  const renewed = await store.mergeSetCookies(cookies, allSetCookies);
+  const renewed = await store.mergeSetCookies(cookieHeader, allSetCookies);
   if (renewed) {
     console.log('[zoo-balance] session cookies renewed (usage)');
   }

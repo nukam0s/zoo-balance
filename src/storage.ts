@@ -1,195 +1,72 @@
 import * as vscode from 'vscode';
-import * as fs from 'fs';
-import * as path from 'path';
 
-const SECRET_KEY = 'zooBalance.cookies';
-
-export interface Cookie {
-  name: string;
-  value: string;
-  domain: string;
-  path: string;
-  expires?: number;
-  httpOnly?: boolean;
-  secure?: boolean;
-  sameSite?: string;
-}
+const SECRET_KEY_HEADER = 'zooBalance.cookieHeader';
 
 /**
- * Manages zoocode.dev cookies in VSCode SecretStorage (encrypted, per-machine).
- * On first use, migrates cookies from a legacy session.json if present.
+ * Manages the zoocode.dev cookie header in VSCode SecretStorage (encrypted, per-machine).
+ * Stores the raw Cookie header string as copied from browser DevTools.
  */
 export class CookieStore {
   constructor(private secrets: vscode.SecretStorage) {}
 
-  /** Load cookies, migrating from session.json on first run. */
-  async load(): Promise<Cookie[]> {
-    const stored = await this.secrets.get(SECRET_KEY);
-    if (stored) {
-      return JSON.parse(stored) as Cookie[];
-    }
-
-    // Migration: read legacy session.json in the workspace root
-    // (__dirname is <workspace>/out, so one level up is the workspace root)
-    const legacy = path.join(__dirname, '..', 'session.json');
-    const migrated = await this.importFromFile(legacy);
-    if (migrated) {
-      return this.load();
-    }
-
-    return [];
+  /** Get the stored raw Cookie header string, or empty string if none. */
+  async getCookieHeader(): Promise<string> {
+    return (await this.secrets.get(SECRET_KEY_HEADER)) ?? '';
   }
 
-  /**
-   * Import cookies from a Playwright storageState file (session.json).
-   * Returns true if cookies were imported.
-   */
-  async importFromFile(filePath: string): Promise<boolean> {
-    if (!fs.existsSync(filePath)) {
-      return false;
-    }
-    try {
-      const state = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-      const cookies: Cookie[] = state.cookies ?? [];
-      if (cookies.length > 0) {
-        await this.save(cookies);
-        return true;
-      }
-    } catch {
-      // ignore malformed file
-    }
-    return false;
+  /** Store a raw Cookie header string (as copied from browser DevTools). */
+  async saveCookieHeader(header: string): Promise<void> {
+    await this.secrets.store(SECRET_KEY_HEADER, header);
   }
 
-  /**
-   * Import cookies from a raw Cookie header string pasted by the user
-   * (e.g. copied from browser DevTools). Returns true if any
-   * zoocode.dev cookie was imported.
-   */
-  async importFromCookieHeader(header: string): Promise<boolean> {
-    const cookies: Cookie[] = [];
-    for (const part of header.split(';')) {
-      const eq = part.indexOf('=');
-      if (eq <= 0) {
-        continue;
-      }
-      const name = part.slice(0, eq).trim();
-      const value = part.slice(eq + 1).trim();
-      if (!name || !value) {
-        continue;
-      }
-      cookies.push({
-        name,
-        value,
-        domain: 'zoocode.dev',
-        path: '/',
-      });
-    }
-    if (cookies.length === 0) {
-      return false;
-    }
-    await this.save(cookies);
-    return true;
-  }
-
-  async save(cookies: Cookie[]): Promise<void> {
-    await this.secrets.store(SECRET_KEY, JSON.stringify(cookies));
-  }
-
-  async clear(): Promise<void> {
-    await this.secrets.delete(SECRET_KEY);
-  }
-
-  /** Build a Cookie header for zoocode.dev, skipping expired cookies. */
-  toHeader(cookies: Cookie[]): string {
-    const now = Date.now() / 1000;
-    return cookies
-      .filter((c) => c.domain.includes('zoocode.dev'))
-      .filter((c) => !c.expires || c.expires > now)
-      .map((c) => `${c.name}=${c.value}`)
-      .join('; ');
-  }
-
-  /**
-   * Merge Set-Cookie headers (raw strings) into the stored cookie list.
-   * Returns true if any cookie was updated.
-   */
-  async mergeSetCookies(cookies: Cookie[], setCookieHeaders: string[]): Promise<boolean> {
+  /** Merge updated cookies from Set-Cookie response headers into the stored header. */
+  async mergeSetCookies(currentHeader: string, setCookieHeaders: string[]): Promise<boolean> {
     if (setCookieHeaders.length === 0) {
       return false;
     }
 
-    const byKey = new Map(cookies.map((c) => [`${c.domain}|${c.path}|${c.name}`, c]));
-    let changed = false;
+    // Parse current header into a map
+    const cookies = new Map<string, string>();
+    for (const part of currentHeader.split(';')) {
+      const eq = part.indexOf('=');
+      if (eq <= 0) continue;
+      cookies.set(part.slice(0, eq).trim(), part.slice(eq + 1).trim());
+    }
 
+    let changed = false;
     for (const raw of setCookieHeaders) {
-      const parsed = parseSetCookie(raw);
-      if (!parsed) {
+      const nameValue = raw.split(';')[0]?.trim();
+      if (!nameValue) continue;
+      const eq = nameValue.indexOf('=');
+      if (eq <= 0) continue;
+      const name = nameValue.slice(0, eq).trim();
+      const value = nameValue.slice(eq + 1).trim();
+
+      // Skip expired cookies (Max-Age=0 or Expires in the past)
+      const lowerRaw = raw.toLowerCase();
+      if (lowerRaw.includes('max-age=0')) {
+        if (cookies.has(name)) {
+          cookies.delete(name);
+          changed = true;
+        }
         continue;
       }
-      const key = `${parsed.domain}|${parsed.path}|${parsed.name}`;
-      const existing = byKey.get(key);
-      if (!existing || existing.value !== parsed.value || existing.expires !== parsed.expires) {
-        byKey.set(key, parsed);
+
+      if (cookies.get(name) !== value) {
+        cookies.set(name, value);
         changed = true;
       }
     }
 
     if (changed) {
-      await this.save([...byKey.values()]);
+      const newHeader = [...cookies.entries()].map(([k, v]) => `${k}=${v}`).join('; ');
+      await this.saveCookieHeader(newHeader);
     }
     return changed;
   }
-}
 
-/**
- * Parses a raw Set-Cookie header value into a Cookie object.
- */
-function parseSetCookie(raw: string): Cookie | null {
-  const parts = raw.split(';').map((p) => p.trim());
-  const [nameValue, ...attrs] = parts;
-  const eq = nameValue.indexOf('=');
-  if (eq <= 0) {
-    return null;
+  /** Clear all stored cookies. */
+  async clear(): Promise<void> {
+    await this.secrets.delete(SECRET_KEY_HEADER);
   }
-
-  const cookie: Cookie = {
-    name: nameValue.slice(0, eq).trim(),
-    value: nameValue.slice(eq + 1).trim(),
-    domain: 'www.zoocode.dev',
-    path: '/',
-  };
-
-  for (const attr of attrs) {
-    const [k, v = ''] = attr.split('=').map((s) => s.trim());
-    switch (k.toLowerCase()) {
-      case 'domain':
-        cookie.domain = v.startsWith('.') ? v.slice(1) : v;
-        break;
-      case 'path':
-        cookie.path = v;
-        break;
-      case 'expires':
-        cookie.expires = Math.floor(Date.parse(v) / 1000);
-        break;
-      case 'max-age': {
-        const maxAge = parseInt(v, 10);
-        if (!isNaN(maxAge)) {
-          cookie.expires = maxAge > 0 ? Math.floor(Date.now() / 1000) + maxAge : 0;
-        }
-        break;
-      }
-      case 'httponly':
-        cookie.httpOnly = true;
-        break;
-      case 'secure':
-        cookie.secure = true;
-        break;
-      case 'samesite':
-        cookie.sameSite = v;
-        break;
-    }
-  }
-
-  return cookie;
 }
