@@ -61,6 +61,37 @@ export class CookieStore {
     return false;
   }
 
+  /**
+   * Import cookies from a raw Cookie header string pasted by the user
+   * (e.g. copied from browser DevTools). Returns true if any
+   * zoocode.dev cookie was imported.
+   */
+  async importFromCookieHeader(header: string): Promise<boolean> {
+    const cookies: Cookie[] = [];
+    for (const part of header.split(';')) {
+      const eq = part.indexOf('=');
+      if (eq <= 0) {
+        continue;
+      }
+      const name = part.slice(0, eq).trim();
+      const value = part.slice(eq + 1).trim();
+      if (!name || !value) {
+        continue;
+      }
+      cookies.push({
+        name,
+        value,
+        domain: 'zoocode.dev',
+        path: '/',
+      });
+    }
+    if (cookies.length === 0) {
+      return false;
+    }
+    await this.save(cookies);
+    return true;
+  }
+
   async save(cookies: Cookie[]): Promise<void> {
     await this.secrets.store(SECRET_KEY, JSON.stringify(cookies));
   }

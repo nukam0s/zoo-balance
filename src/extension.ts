@@ -1,6 +1,4 @@
 import * as vscode from 'vscode';
-import * as fs from 'fs';
-import * as path from 'path';
 import { getBalanceInfo, BalanceInfo } from './getBalance';
 import { getUsageInfo, UsageInfo } from './getUsage';
 import { CookieStore } from './storage';
@@ -84,30 +82,28 @@ export function activate(ctx: vscode.ExtensionContext) {
       vscode.window.showInformationMessage('Zoo Balance: session cleared.');
     }),
     vscode.commands.registerCommand('zooBalance.login', async () => {
-      const sessionFile = path.join(ctx.extensionPath, 'session.json');
-      if (fs.existsSync(sessionFile)) {
-        const imported = await store.importFromFile(sessionFile);
-        if (imported) {
-          vscode.window.showInformationMessage('Zoo Balance: session imported from session.json.');
-          refresh();
-          return;
-        }
+      // 1. Open the browser so the user can log in
+      await vscode.env.openExternal(vscode.Uri.parse('https://www.zoocode.dev/dashboard/credits'));
+
+      // 2. Ask the user to paste the Cookie header from DevTools
+      const header = await vscode.window.showInputBox({
+        ignoreFocusOut: true,
+        password: true,
+        prompt: 'Paste the "Cookie" header value from DevTools (Network tab → any request to zoocode.dev → Request Headers → Cookie)',
+        title: 'Zoo Balance: Login',
+        placeHolder: 'name1=value1; name2=value2; ...',
+      });
+
+      if (!header) {
+        return;
       }
 
-      const fileUri = await vscode.window.showOpenDialog({
-        canSelectMany: false,
-        filters: { 'Session files': ['json'] },
-        openLabel: 'Import session.json',
-        title: 'Zoo Balance: select a session.json (Playwright storageState) to import',
-      });
-      if (fileUri && fileUri[0]) {
-        const imported = await store.importFromFile(fileUri[0].fsPath);
-        if (imported) {
-          vscode.window.showInformationMessage('Zoo Balance: session imported.');
-          refresh();
-          return;
-        }
-        vscode.window.showErrorMessage('Zoo Balance: no cookies found in the selected file.');
+      const imported = await store.importFromCookieHeader(header);
+      if (imported) {
+        vscode.window.showInformationMessage('Zoo Balance: session saved. Fetching balance...');
+        refresh();
+      } else {
+        vscode.window.showErrorMessage('Zoo Balance: could not parse the Cookie header. Make sure you copied the full value.');
       }
     }),
     vscode.workspace.onDidChangeConfiguration((e) => {
