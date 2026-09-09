@@ -1,0 +1,61 @@
+{
+  "name": "zoo-balance",
+  "displayName": "Zoo Balance",
+  "description": "Shows your Zoo Code (zoocode.dev) balance, usage and cache performance in the VSCode status bar",
+  "version": "0.0.1",
+  "publisher": "nukam0s",
+  "license": "MIT",
+  "keywords": ["zoo", "balance", "credits", "usage", "zoocode"],
+  "categories": ["Other"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nukam0s/zoo-balance"
+  },
+  "engines": { "vscode": "^1.85.0" },
+  "main": "./out/extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "scripts": {
+    "compile": "tsc -p ./"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "zooBalance.refresh",
+        "title": "Zoo Balance: Refresh",
+        "category": "Zoo Balance"
+      },
+      {
+        "command": "zooBalance.showSummary",
+        "title": "Zoo Balance: Show Summary",
+        "category": "Zoo Balance"
+      },
+      {
+        "command": "zooBalance.login",
+        "title": "Zoo Balance: Login",
+        "category": "Zoo Balance"
+      },
+      {
+        "command": "zooBalance.logout",
+        "title": "Zoo Balance: Logout",
+        "category": "Zoo Balance"
+      }
+    ],
+    "configuration": {
+      "title": "Zoo Balance",
+      "properties": {
+        "zooBalance.refreshInterval": {
+          "type": "number",
+          "default": 5,
+          "minimum": 1,
+          "description": "Interval in minutes to refresh the Zoo Code balance"
+        }
+      }
+    }
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0"
+  }
+}
