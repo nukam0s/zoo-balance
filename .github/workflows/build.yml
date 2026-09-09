@@ -19,7 +19,7 @@ jobs:
       - run: npm install
       - run: npm run compile
       - name: Package VSIX
-        run: npx @vscode/vsce package --no-verify-publisher --no-update-package-json
+        run: npx @vscode/vsce package --no-update-package-json
       - name: Upload artifact
         uses: actions/upload-artifact@v5
         with:
